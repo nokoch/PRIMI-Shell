@@ -163,7 +163,7 @@ sub execute {
 			}
 		} elsif ($prog eq "ver") {
 			print	color("red"), "P",color("reset"), "erl-", 
-				color("red"), "R",color("reset"), "running, ",
+				color("red"), "R",color("reset"), "unning, ",
 				color("red"), "I",color("reset"), "nstable ",
 				color("red"), "M",color("reset"), "inimal-",
 				color("red"), "I",color("reset"), "ntelligence",
