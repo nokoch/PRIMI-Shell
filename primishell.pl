@@ -10,10 +10,12 @@ use Time::HiRes;
 use Sys::Hostname;
 
 $| = 1;
+our $programsAreRunning = 0;
+$SIG{INT} = sub{};
 our @userinfo = getpwuid($<);
 our @allPrograms = ();
 getAllPrograms();
-our @shellInternalPrograms = qw(ver cd showhistory showshellpid shellperl);
+our @shellInternalPrograms = qw(exit ver cd showhistory showshellpid shellperl);
 push @allPrograms, @shellInternalPrograms;
 @allPrograms = removeDoubleElementsFromArray(@allPrograms);
 our $ARROW_UP = chr(27);
@@ -116,7 +118,7 @@ while (1) {
 				$prog = spellcheck($prog);
 			}
 			use warnings;
-			execute($prog, @params);
+			execute($prog, @params) if $prog;
 		} elsif ($input eq "..") {
 			execute("cd", $input);
 		}
@@ -126,6 +128,8 @@ while (1) {
 sub execute {
 	my $prog = shift;
 	my @params = @_;
+
+	$programsAreRunning = 1;
 
 	my $commandHistString = $prog." ".join(" ", @params);
 	$commandHistString =~ s/(.*)(\[A)?/$1/g;
@@ -191,6 +195,7 @@ sub execute {
 	} else {
 		my $start = Time::HiRes::gettimeofday();
 		wait;
+		$programsAreRunning = 0;
 		my $end = Time::HiRes::gettimeofday();
 		print "\n";
 		print "Fehlercode: $?\n" if $?;
@@ -416,8 +421,6 @@ sub printBeginning {
 }
 
 sub getAllPrograms {
-	@allPrograms  = ();
-
 	my $pathString = qx(echo \$PATH);
 	my @paths = split(":", $pathString);
 
@@ -445,9 +448,9 @@ sub spellcheck {
 
 	print "Das Programm `$progname` wurde nicht gefunden. Meintest du..?\n";
 	my @vorschlaege = sort { $check{$a} <=> $check{$b} || $a cmp $b } keys %check;
-	my $returnThis = cycleThrough($progname, [], "", @vorschlaege[0 .. 10]);
+	my $returnThis = cycleThrough($progname, [], "", @vorschlaege[0 .. 10], "Keinen davon!");
 
-	return $returnThis;
+	return ($returnThis eq "Keinen davon!" ? undef : $returnThis);
 }
 
 sub levenshtein {
@@ -544,6 +547,7 @@ sub cycleThrough {
 	my ($prog, $befehleref, $beginning) = (shift, shift, shift);
 	my @el = @_;
 	return $el[0] if $#el == 0;
+	return undef if $#el == -1;
 
 	@el = grep($_ =~ /^$beginning/, @el);
 
