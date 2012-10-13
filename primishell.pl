@@ -34,7 +34,7 @@ while (1) {
 		my $vorschlag = cycleThrough($input, [], "", completetion($input, 0));
 		if($vorschlag) {
 			$input = $vorschlag;
-			print "\n";
+			print "\e[1K\r";
 			printBeginning();
 			print $input;
 		} else {
@@ -43,7 +43,7 @@ while (1) {
 	} elsif ($input eq $CLEAR) {
 		$input = "";
 		print "\n";
-		execute("clear");
+		system("clear");
 		printBeginning();
 	} elsif ($input eq chr(127)) {
 		$input = "";
@@ -72,7 +72,7 @@ while (1) {
 				}
 				my $vorschlag = cycleThrough($input.$tkey, [], "", completetion($input.$tkey, $prog_done));
 				if($vorschlag) {
-					print "\n";
+					print "\e[1K\r";
 					printBeginning();
 					if($input !~ /^(rm|rmdir) / && $prog_done) {
 						my ($prog, @params) = split(/\s+/, $input);
@@ -98,7 +98,7 @@ while (1) {
 				printBeginning();
 				print $input;
 			} elsif ($input =~ $CLEAR) {
-				execute("clear");
+				system("clear");
 				print "\n";
 				printBeginning();
 				$input = "";
@@ -443,26 +443,9 @@ sub spellcheck {
 
 	my $i = 1;
 
-
 	print "Das Programm `$progname` wurde nicht gefunden. Meintest du..?\n";
-	my @vorschlaege = ();
-	foreach my $s (sort { $check{$a} <=> $check{$b} || $a cmp $b } keys %check) {
-		print "$i: $s\n";
-		$vorschlaege[$i] = $s;
-		last if ++$i > 4;
-	}
-
-	my $nr = <>;
-	chomp($nr);
-	my $returnThis = "";
-	no warnings;
-	if(defined($vorschlaege[$nr]) && $nr =~ /^[0-9]?$/) {
-		$returnThis = $vorschlaege[$nr];
-	} else {
-		print "Okay. Dann helf ich dir eben nicht! Nehm doch dein bloedes `$progname`, wenn du umbedingt willst...\n";
-		$returnThis = $progname;
-	}
-	use warnings;
+	my @vorschlaege = sort { $check{$a} <=> $check{$b} || $a cmp $b } keys %check;
+	my $returnThis = cycleThrough($progname, [], "", @vorschlaege[0 .. 10]);
 
 	return $returnThis;
 }
@@ -571,13 +554,13 @@ sub cycleThrough {
 	my $choice = -1;
 	ReadMode('cbreak');
 	my $key = "";
-	while ($key ne "\n") {
+	do {
 		unless($choice == -1) {
 			$key = ReadKey(0) ;
 		}
 		$choice = 0 if $choice == -1;
 		my $intstr = "";
-		if($key eq "\t") {
+		if($key eq "\t" || $key eq "") {
 			foreach (0 .. $#el) {
 				if($choice eq $_) {
 					$intstr .= color("on_green black").$el[$_].color("reset")."\t";
@@ -588,12 +571,9 @@ sub cycleThrough {
 			$choice++;
 			$choice = 0 if $choice > $#el;
 		}
-		system("clear");
-		printBeginning();
-		print $prog.join(" ", @{$befehleref});	
-		print "\n";
+		print "\e[1K\r";
 		print $intstr;
-	}
+	} while ($key ne "\n");
 	ReadMode 'normal';
 	my $ch = $el[$choice - 1];
 	$ch =~ s/ /\ /g;
